@@ -1,0 +1,36 @@
+@model Notification
+@{ ViewData["Title"] = $"Thông báo #{Model.Id}"; var (ct, ccss, cicon) = Ui.Chan(Model.Channel); var (st, scss) = Ui.Stat(Model.Status); }
+<div class="row g-3">
+    <div class="col-lg-7"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h5 class="fw-bold mb-0"><span class="badge bg-@ccss me-1"><i class="bi @cicon me-1"></i>@ct</span> @Model.ToAddress</h5>
+            <span class="badge bg-@scss">@st</span>
+        </div>
+        @if (!string.IsNullOrEmpty(Model.Subject)) { <div class="fw-semibold mb-1">@Model.Subject</div> }
+        <pre class="border rounded p-2 small" style="white-space:pre-wrap">@Model.Body</pre>
+        @if (Model.Status == NotiStatus.Failed) { <div class="alert alert-danger py-2 small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>@Model.Error</div> }
+        <a href="/Notification" class="btn btn-outline-secondary btn-sm mt-2">← Nhật ký</a>
+    </div></div></div>
+    <div class="col-lg-5"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Chi tiết</h6>
+        <table class="table table-sm small mb-3">
+            <tr><td class="text-muted">Mẫu</td><td>@(Model.TemplateName ?? "— trực tiếp —")</td></tr>
+            <tr><td class="text-muted">Nhà cung cấp</td><td>@Model.Provider</td></tr>
+            <tr><td class="text-muted">Mã kết quả</td><td>@Model.ResultCode</td></tr>
+            <tr><td class="text-muted">Số lần gửi lại</td><td>@Model.RetryCount</td></tr>
+            <tr><td class="text-muted">Tạo</td><td>@Model.CreatedAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</td></tr>
+            @if (Model.SentAt != null) { <tr><td class="text-muted">Gửi</td><td>@Model.SentAt.Value.ToLocalTime().ToString("dd/MM HH:mm:ss")</td></tr> }
+            @if (Model.DeliveredAt != null) { <tr><td class="text-muted">Đến nơi</td><td>@Model.DeliveredAt.Value.ToLocalTime().ToString("dd/MM HH:mm:ss")</td></tr> }
+        </table>
+        <div class="d-flex flex-column gap-2">
+            @if (Model.Status == NotiStatus.Failed)
+            {
+                <form asp-action="Retry" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary w-100"><i class="bi bi-arrow-clockwise me-1"></i>Gửi lại</button></form>
+            }
+            @if (Model.Status == NotiStatus.Sent)
+            {
+                <form asp-action="Deliver" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-success w-100"><i class="bi bi-check2-all me-1"></i>Xác nhận đã nhận (webhook)</button></form>
+            }
+        </div>
+    </div></div></div>
+</div>

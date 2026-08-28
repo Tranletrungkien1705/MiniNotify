@@ -1,0 +1,48 @@
+@model List<Template>
+@{ ViewData["Title"] = "Mẫu & gửi"; }
+<div class="row g-3">
+    <div class="col-lg-7"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Mẫu thông báo</h6>
+        <div class="accordion" id="tpls">
+        @foreach (var t in Model)
+        {
+            var (ct, ccss, cicon) = Ui.Chan(t.Channel);
+            <div class="accordion-item">
+                <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#t@t.Id">
+                    <span class="badge bg-@ccss me-2"><i class="bi @cicon me-1"></i>@ct</span> <b class="me-2">@t.Name</b> <code class="small">@t.Code</code>
+                    @if (!t.Active) { <span class="badge bg-secondary ms-2">Tắt</span> }
+                </button></h2>
+                <div id="t@t.Id" class="accordion-collapse collapse" data-bs-parent="#tpls"><div class="accordion-body">
+                    @if (!string.IsNullOrEmpty(t.Subject)) { <div class="small mb-1"><b>Tiêu đề:</b> @t.Subject</div> }
+                    <pre class="small border rounded p-2" style="white-space:pre-wrap">@t.Body</pre>
+                    <form asp-action="SendTest" method="post" class="border-top pt-2">@Html.AntiForgeryToken()<input type="hidden" name="code" value="@t.Code" />
+                        <div class="row g-2">
+                            <div class="col-md-5"><input name="to" class="form-control form-control-sm" placeholder="Đến (email/SĐT/token)" required /></div>
+                            <div class="col-md-7"><textarea name="data" class="form-control form-control-sm" rows="2" placeholder="Dữ liệu: mỗi dòng key=value&#10;name=Nguyễn Văn A&#10;invoiceNo=001"></textarea></div>
+                        </div>
+                        <button class="btn btn-sm btn-primary mt-2"><i class="bi bi-send me-1"></i>Gửi thử</button>
+                    </form>
+                </div></div>
+            </div>
+        }
+        </div>
+        @if (Model.Count == 0) { <div class="text-muted">Chưa có mẫu.</div> }
+    </div></div></div>
+    <div class="col-lg-5"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Tạo mẫu mới</h6>
+        <form asp-action="Save" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="0" />
+            <div class="row g-2 mb-2">
+                <div class="col-7"><input name="name" class="form-control form-control-sm" placeholder="Tên mẫu *" required /></div>
+                <div class="col-5"><input name="code" class="form-control form-control-sm text-uppercase" placeholder="Mã (tự sinh)" /></div>
+            </div>
+            <div class="mb-2"><select name="channel" class="form-select form-select-sm">
+                @foreach (Channel c in Enum.GetValues(typeof(Channel))) { var (t,_,_)=Ui.Chan(c); <option value="@((int)c)">@t</option> }
+            </select></div>
+            <div class="mb-2"><input name="subject" class="form-control form-control-sm" placeholder="Tiêu đề (Email/Push)" /></div>
+            <div class="mb-2"><textarea name="body" class="form-control form-control-sm" rows="4" placeholder="Nội dung, dùng {{placeholder}}..." required></textarea></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="true" checked id="ac" /><label class="form-check-label small" for="ac">Kích hoạt</label></div>
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Lưu mẫu</button>
+        </form>
+        <div class="small text-muted mt-3">Placeholder <code>@("{{name}}")</code> sẽ thay bằng dữ liệu khi gửi.</div>
+    </div></div></div>
+</div>
