@@ -78,9 +78,57 @@ app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>
     return Results.Ok(new { orgId = org.Id, apiKey = org.ApiKey });
 });
 
+// Import mẫu thông báo thật từ nghiệp vụ HTC (dedupe theo Code)
+app.MapPost("/api/import/templates", async (List<ImportTemplateDto> rows, AppDbContext db, ITenantContext tc) =>
+{
+    if (rows == null || rows.Count == 0) return Results.BadRequest(new { error = "Không có dữ liệu." });
+    int added = 0, skipped = 0;
+    var orgId = tc.OrgId;
+    var existCodes = db.Templates.Where(t => t.OrgId == orgId).Select(t => t.Code).ToHashSet();
+    foreach (var row in rows)
+    {
+        if (string.IsNullOrWhiteSpace(row.Code)) { skipped++; continue; }
+        if (existCodes.Contains(row.Code.Trim())) { skipped++; continue; }
+        db.Templates.Add(new Template
+        {
+            OrgId = orgId, Code = row.Code.Trim(), Name = row.Name?.Trim() ?? row.Code.Trim(),
+            Channel = (Channel)Math.Clamp(row.Channel, 0, 3),
+            Subject = row.Subject?.Trim() ?? "", Body = row.Body?.Trim() ?? "", Active = true
+        });
+        existCodes.Add(row.Code.Trim()); added++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { added, skipped, total = added + skipped });
+});
+
+// Import lịch sử thông báo thật (dedupe theo ToAddress+Subject, lấy sent/delivered)
+app.MapPost("/api/import/notifications", async (List<ImportNotifDto> rows, AppDbContext db, ITenantContext tc) =>
+{
+    if (rows == null || rows.Count == 0) return Results.BadRequest(new { error = "Không có dữ liệu." });
+    int added = 0;
+    var orgId = tc.OrgId;
+    foreach (var row in rows)
+    {
+        if (string.IsNullOrWhiteSpace(row.To)) { continue; }
+        db.Notifications.Add(new Notification
+        {
+            OrgId = orgId, Channel = (Channel)Math.Clamp(row.Channel, 0, 3),
+            ToAddress = row.To.Trim(), Subject = row.Subject?.Trim() ?? "",
+            Body = row.Body?.Trim() ?? "", Status = NotiStatus.Sent,
+            Provider = row.Provider ?? "import", SentAt = row.SentAt ?? DateTime.Now,
+            DeliveredAt = row.SentAt ?? DateTime.Now
+        });
+        added++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { added, total = added });
+});
+
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
 app.Run();
 
 record SendDto(string? TemplateCode, string? Channel, string? To, string? Subject, string? Body, Dictionary<string, string>? Data);
 record DeliveryDto(int Id);
 record RegisterOrgDto(string Name);
+record ImportTemplateDto(string? Code, string? Name, int Channel, string? Subject, string? Body);
+record ImportNotifDto(string? To, int Channel, string? Subject, string? Body, string? Provider, DateTime? SentAt);
