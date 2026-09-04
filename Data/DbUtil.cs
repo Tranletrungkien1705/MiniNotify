@@ -9,7 +9,7 @@ public static class DbUtil
         var sb = new System.Text.StringBuilder();
         sb.Append($"Host={u.Host};Port={(u.Port > 0 ? u.Port : 5432)};Database={db};");
         sb.Append($"Username={System.Uri.UnescapeDataString(ui[0])};Password={System.Uri.UnescapeDataString(ui.Length > 1 ? ui[1] : "")};");
-        sb.Append("SSL Mode=Require;Pooling=true;");
+        sb.Append("SSL Mode=Require;Pooling=true;Maximum Pool Size=5;Timeout=30;");
         foreach (var kv in u.Query.TrimStart('?').Split('&', System.StringSplitOptions.RemoveEmptyEntries))
         { var p = kv.Split('=', 2); if (p.Length == 2 && p[0].Equals("channel_binding", System.StringComparison.OrdinalIgnoreCase)) sb.Append($"Channel Binding={p[1]};"); }
         return sb.ToString();
